@@ -24,55 +24,39 @@
  * and writing that number to EEPROM.
  */
 
-#include <avr/pgmspace.h>
-#include <RF24Network.h>
-#include <RF24.h>
-#include <SPI.h>
-#include <Tictocs.h>
-#include <TictocTimer.h>
-#include "nodeconfig.h"
-#include "sleep.h"
-#include "S_message.h"
-#include "printf.h"
+// #include <avr/pgmspace.h>
+ #include <RF24Network.h>
+ #include <RF24.h>
+ #include <SPI.h>
+ #include <Tictocs.h>
+ #include <TictocTimer.h>
+ #include "nodeconfig.h"
+// #include "sleep.h"
+ #include "S_message.h"
+ #include "printf.h"
 
-#include "SocketIOClient.h"
-#include "Ethernet.h"
-#include "SPI.h"
+ #include "SocketIOClient.h"
+ #include "Ethernet.h"
+ #include "SPI.h"
+ // #include <IRremote.h>
+
+ // int RECV_PIN = 3;
+
+ // IRrecv irrecv(RECV_PIN);
+ // decode_results results;
+
 //#include "bitlash.h"
 SocketIOClient client;
-
-// This is for git version tracking.  Safe to ignore
-#ifdef VERSION_H
-#include "version.h"
-#else
-const char program_version[] = "Unknown";
-#endif
-
-// Pin definitions
-#ifndef PINS_DEFINED
-#define __PLATFORM__ "Getting Started board"
 
 // Pins for radio
 const int rf_ce = 8;
 const int rf_csn = 9;
-
-#endif
 
 RF24 radio(rf_ce,rf_csn);
 RF24Network network(radio);
 
 // Our node configuration 
 eeprom_info_t this_node;
-
-// How many measurements to take.  64*1024 = 65536, so 64 is the max we can fit in a uint16_t.
-const int num_measurements = 64;
-
-// Sleep constants.  In this example, the watchdog timer wakes up
-// every 4s, and every single wakeup we power up the radio and send
-// a reading.  In real use, these numbers which be much higher.
-// Try wdt_8s and 7 cycles for one reading per minute.> 1
-const wdt_prescalar_e wdt_prescalar = wdt_4s;
-//const int sleep_cycles_per_transmission = 1;
 
 // Non-sleeping nodes need a timer to regulate their sending interval
 Timer send_timer(2000);
@@ -88,9 +72,6 @@ bool gotCommand = false;
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 char hostname[] = "professor-x.frogdesign.com";//"10.118.82.4";
 int port = 3000;
-
-#define HELLO_INTERVAL 3000UL
-unsigned long lasthello;
 
 // websocket message handler: do something with command from server
 void ondata(SocketIOClient client, char *data) {
@@ -128,9 +109,7 @@ void setup(void)
   Serial.begin(57600);
   printf_begin();
   printf_P(PSTR("\n\rRF24Network/examples/sensornet/\n\r"));
-  printf_P(PSTR("PLATFORM: " __PLATFORM__ "\n\r"),program_version);
-  printf_P(PSTR("VERSION: %s\n\r"),program_version);
-  
+
   //
   // Pull node address out of eeprom 
   //
@@ -149,6 +128,9 @@ void setup(void)
   radio.begin();
   network.begin(/*channel*/ 92, /*node address*/ this_node.address);
 
+  //irrecv.enableIRIn(); // Start the receiver
+
+
   Ethernet.begin(mac);
 
   client.setDataArrivedDelegate(ondata);
@@ -157,9 +139,56 @@ void setup(void)
   if (client.connected()) client.send("Client here!");
 }
 
+bool findNode(uint16_t nodeAddress) {
+  for (int i = 0; i < nodesCount; i++) {
+    if (nodes[i] == nodeAddress) {
+      return true;
+    }
+  }
+  return false;
+}
+// void doIR() {
+
+//   if (irrecv.decode(&results)) {
+//     Serial.println(results.value);
+//     irrecv.resume(); // Receive the next value
+//     if (results.value == 2011242556)
+//     {
+//       Serial.println("Play");
+//     }
+//     else if (results.value == 2011291708)
+//     {
+//       Serial.println("FF");
+//     }
+//     else if (results.value == 2011238460)
+//     {
+//       Serial.println("REV");
+//     }
+//     else if (results.value == 2011287612)
+//     {
+//       Serial.println("+");
+//     } 
+//     else if (results.value == 2011279420)
+//     {
+//       Serial.println("-");
+//     }
+//     else if (results.value == 2011250748)
+//     {
+//       Serial.println("Menu");
+//     }
+//     else {
+//       Serial.println("--");
+//     }
+
+//   }
+// }
+
 void loop(void)
 {
   bool doAck = false;
+
+  // doIR();
+
   uint16_t recipient = 0;
   // Update objects
   theUpdater.update();
@@ -176,20 +205,23 @@ void loop(void)
     network.read(header,&message,sizeof(message));
     printf_P(PSTR("%lu: APP Received #%u %s from 0%o\n\r"),millis(),header.id,message.toString(),header.from_node);
     if (strcmp(message.payload,"REGISTER") == 0) {
-      nodes[nodesCount] = header.from_node;
-      nodesCount++;
-    } else {
-      char report[20];
-      sprintf(report,"mReport:%u:%s",header.from_node,message.toString());
-      if (client.connected()) client.send(report);
+      bool found = findNode(header.from_node);
+      if (!found) {
+        nodes[nodesCount] = header.from_node;
+        nodesCount++;
+      }
+      } else {
+        char report[20];
+        sprintf(report,"mReport:%u:%s",header.from_node,message.toString());
+        if (client.connected()) client.send(report);
+      }
     }
-  }
 
-  recipient = nodes[robin];
-  robin++;
-  if (robin == nodesCount) {
-    robin = 0;
-  }
+    recipient = nodes[robin];
+    robin++;
+    if (robin == nodesCount) {
+      robin = 0;
+    }
 
   // If we are the kind of node that sends readings, AND it's time to send
   // a reading AND we're in the mode where we send readings...
@@ -205,9 +237,9 @@ void loop(void)
       // Serial.print(" sending to node: ");
       // Serial.print(recipient);
       // Serial.println(" ");
-    } else {
-      strcpy(message.payload,"REPORT");
-    }
+      } else {
+        strcpy(message.payload,"REPORT");
+      }
 
     // printf_P(PSTR("---------------------------------\n\r"));
     // printf_P(PSTR("%lu: APP Sending %s to 0%o...\n\r"),millis(),message.toString(),recipient);
@@ -231,10 +263,5 @@ void loop(void)
 
   client.monitor();
 
-  unsigned long now = millis();
-  if ((now - lasthello) >= HELLO_INTERVAL) {
-    lasthello = now;
-  }
-  // Listen for a new node address
   nodeconfig_listen();
 }

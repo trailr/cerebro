@@ -126,7 +126,7 @@ void setup(void)
 
   SPI.begin();
   radio.begin();
-  network.begin(/*channel*/ 92, /*node address*/ this_node.address);
+  network.begin(/*channel*/ 102, /*node address*/ this_node.address);
 
   //irrecv.enableIRIn(); // Start the receiver
 

@@ -69,8 +69,8 @@ char command[10];
 uint16_t commandRecipient = 0;
 bool gotCommand = false;
 
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-char hostname[] = "professor-x.frogdesign.com";//"10.118.82.4";
+byte mac[] = { 0xC5, 0x5F, 0x0E, 0xE0, 0x2A, 0xAC };
+char hostname[] = "192.168.2.1"; //"10.118.82.4";
 int port = 3000;
 
 // websocket message handler: do something with command from server

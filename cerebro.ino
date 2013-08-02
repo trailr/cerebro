@@ -38,12 +38,8 @@
  #include "SocketIOClient.h"
  #include "Ethernet.h"
  #include "SPI.h"
- // #include <IRremote.h>
 
- // int RECV_PIN = 3;
-
- // IRrecv irrecv(RECV_PIN);
- // decode_results results;
+ int RECV_PIN = 3;
 
 //#include "bitlash.h"
 SocketIOClient client;
@@ -128,8 +124,6 @@ void setup(void)
   radio.begin();
   network.begin(/*channel*/ 102, /*node address*/ this_node.address);
 
-  //irrecv.enableIRIn(); // Start the receiver
-
 
   Ethernet.begin(mac);
 
@@ -147,47 +141,10 @@ bool findNode(uint16_t nodeAddress) {
   }
   return false;
 }
-// void doIR() {
-
-//   if (irrecv.decode(&results)) {
-//     Serial.println(results.value);
-//     irrecv.resume(); // Receive the next value
-//     if (results.value == 2011242556)
-//     {
-//       Serial.println("Play");
-//     }
-//     else if (results.value == 2011291708)
-//     {
-//       Serial.println("FF");
-//     }
-//     else if (results.value == 2011238460)
-//     {
-//       Serial.println("REV");
-//     }
-//     else if (results.value == 2011287612)
-//     {
-//       Serial.println("+");
-//     } 
-//     else if (results.value == 2011279420)
-//     {
-//       Serial.println("-");
-//     }
-//     else if (results.value == 2011250748)
-//     {
-//       Serial.println("Menu");
-//     }
-//     else {
-//       Serial.println("--");
-//     }
-
-//   }
-// }
 
 void loop(void)
 {
   bool doAck = false;
-
-  // doIR();
 
   uint16_t recipient = 0;
   // Update objects
@@ -203,62 +160,62 @@ void loop(void)
     RF24NetworkHeader header;
     S_message message;
     network.read(header,&message,sizeof(message));
-    printf_P(PSTR("%lu: APP Received #%u %s from 0%o\n\r"),millis(),header.id,message.toString(),header.from_node);
+    //printf_P(PSTR("%lu: APP Received #%u %s from 0%o\n\r"),millis(),header.id,message.toString(),header.from_node);
     if (strcmp(message.payload,"REGISTER") == 0) {
       bool found = findNode(header.from_node);
       if (!found) {
         nodes[nodesCount] = header.from_node;
         nodesCount++;
       }
-      } else {
-        char report[20];
-        sprintf(report,"mReport:%u:%s",header.from_node,message.toString());
-        if (client.connected()) client.send(report);
-      }
+    } else {
+      char report[32];
+      sprintf(report,"ID:%u",header.from_node);
+      sprintf(report,"%s:%s",report,message.toString());
+      //printf_P(PSTR("SERVER RECEIVE: %s\n\r"),report);
+      if (client.connected()) client.send(report);
     }
+  }
 
+  if (nodesCount > 0) {
     recipient = nodes[robin];
     robin++;
     if (robin == nodesCount) {
       robin = 0;
     }
 
-  // If we are the kind of node that sends readings, AND it's time to send
-  // a reading AND we're in the mode where we send readings...
-  if ( ( this_node.address == 0 && send_timer.wasFired() && recipient != 0 ) || doAck && this_node.address != 0 || gotCommand )
-  {
-    S_message message;
-    if (gotCommand && commandRecipient == recipient) {
-      strcpy(message.payload,command);
-      // Serial.print("Command: ");
-      // Serial.print(command);
-      // Serial.print(" for node: ");
-      // Serial.print(commandRecipient);
-      // Serial.print(" sending to node: ");
-      // Serial.print(recipient);
-      // Serial.println(" ");
+    // If we are the kind of node that sends readings, AND it's time to send
+    // a reading AND we're in the mode where we send readings...
+    if ( ( this_node.address == 0 && send_timer.wasFired() && recipient != 0 ) || doAck && this_node.address != 0 || gotCommand ) {
+      S_message message;
+      if (gotCommand && commandRecipient == recipient) {
+        strcpy(message.payload,command);
+        // Serial.print("Command: ");
+        // Serial.print(command);
+        // Serial.print(" for node: ");
+        // Serial.print(commandRecipient);
+        // Serial.print(" sending to node: ");
+        // Serial.print(recipient);
+        // Serial.println(" ");
       } else {
         strcpy(message.payload,"REPORT");
       }
 
-    // printf_P(PSTR("---------------------------------\n\r"));
-    // printf_P(PSTR("%lu: APP Sending %s to 0%o...\n\r"),millis(),message.toString(),recipient);
-    
-    // Send it to the base
-    RF24NetworkHeader header(/*to node*/ recipient, /*type*/ false ? 's' : 'S');
-    bool ok = network.write(header,&message,sizeof(message));
-    if (ok)
-    {
-      // printf_P(PSTR("%lu: APP Send ok\n\r"),millis());
-      if (gotCommand && commandRecipient == recipient) {
-        gotCommand = false;
-      }
-    }
-    else
-    {
-      printf_P(PSTR("%lu: APP Send failed\n\r"),millis());
-    }
+      // printf_P(PSTR("---------------------------------\n\r"));
+      // printf_P(PSTR("%lu: APP Sending %s to 0%o...\n\r"),millis(),message.toString(),recipient);
 
+      // Send it to the base
+      RF24NetworkHeader header(/*to node*/ recipient, /*type*/ false ? 's' : 'S');
+      bool ok = network.write(header,&message,sizeof(message));
+      if (ok) {
+        // printf_P(PSTR("%lu: APP Send ok\n\r"),millis());
+        if (gotCommand && commandRecipient == recipient) {
+          gotCommand = false;
+        }
+      } else {
+        printf_P(PSTR("%lu: APP Send to %i failed\n\r"),millis(),recipient);
+      }
+
+    }
   }
 
   client.monitor();

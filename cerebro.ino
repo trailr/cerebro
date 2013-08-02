@@ -182,6 +182,9 @@ void loop(void)
     if (robin == nodesCount) {
       robin = 0;
     }
+    if (nodesCount == 0) {
+      recipient = 0;
+    }
 
     // If we are the kind of node that sends readings, AND it's time to send
     // a reading AND we're in the mode where we send readings...

@@ -65,7 +65,8 @@ char command[10];
 uint16_t commandRecipient = 0;
 bool gotCommand = false;
 
-byte mac[] = { 0xC5, 0x5F, 0x0E, 0xE0, 0x2A, 0xAC };
+//byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };//CEREBRO
+byte mac[] = { 0x36, 0x4D, 0x8E, 0x3D, 0x57, 0x42 };//POPULOUS
 char hostname[] = "192.168.2.1"; //"10.118.82.4";
 int port = 3000;
 
@@ -96,6 +97,10 @@ void ondata(SocketIOClient client, char *data) {
   }
 }
 
+//void ondisconnect(SocketIOClient client, char *data) {
+//  Serial.println("DISCONNECTED");
+//}
+
 void setup(void)
 {
   //
@@ -109,8 +114,7 @@ void setup(void)
   //
   // Pull node address out of eeprom 
   //
-
-  // Which node are we?
+  Serial.println("Get address from eeprom");
   this_node = nodeconfig_read();
 
   // Prepare the startup sequence
@@ -120,17 +124,27 @@ void setup(void)
   // Bring up the RF network
   //
 
+  Serial.println("SPI begin");
   SPI.begin();
+  Serial.println("radio begin");
   radio.begin();
-  network.begin(/*channel*/ 102, /*node address*/ this_node.address);
+  Serial.println("network begin");
+  network.begin(/*channel*/ 92, /*node address*/ this_node.address);
 
 
+  Serial.println("Ethernet begin");
   Ethernet.begin(mac);
 
+  Serial.println("Set data delegate");
   client.setDataArrivedDelegate(ondata);
+//  Serial.println("Set disconnect delegate");
+//  client.setDataArrivedDelegate(ondisconnect);
   if (!client.connect(hostname, port)) Serial.println(F("Not connected."));
 
   if (client.connected()) client.send("Client here!");
+}
+
+bool connect() {
 }
 
 bool findNode(uint16_t nodeAddress) {
@@ -164,6 +178,8 @@ void loop(void)
     if (strcmp(message.payload,"REGISTER") == 0) {
       bool found = findNode(header.from_node);
       if (!found) {
+        Serial.print("Registering node ");
+        Serial.println(header.from_node);
         nodes[nodesCount] = header.from_node;
         nodesCount++;
       }

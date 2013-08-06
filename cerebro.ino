@@ -114,7 +114,7 @@ void setup(void)
   //
   // Pull node address out of eeprom 
   //
-  Serial.println("Get address from eeprom");
+  //Serial.println("Get address from eeprom");
   this_node = nodeconfig_read();
 
   // Prepare the startup sequence
@@ -124,18 +124,18 @@ void setup(void)
   // Bring up the RF network
   //
 
-  Serial.println("SPI begin");
+  //Serial.println("SPI begin");
   SPI.begin();
-  Serial.println("radio begin");
+  //Serial.println("radio begin");
   radio.begin();
-  Serial.println("network begin");
-  network.begin(/*channel*/ 92, /*node address*/ this_node.address);
+  //Serial.println("network begin");
+  network.begin(/*channel*/ 102, /*node address*/ this_node.address);
 
 
-  Serial.println("Ethernet begin");
+  //Serial.println("Ethernet begin");
   Ethernet.begin(mac);
 
-  Serial.println("Set data delegate");
+  //Serial.println("Set data delegate");
   client.setDataArrivedDelegate(ondata);
 //  Serial.println("Set disconnect delegate");
 //  client.setDataArrivedDelegate(ondisconnect);

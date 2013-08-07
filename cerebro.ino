@@ -57,7 +57,7 @@ eeprom_info_t this_node;
 // Non-sleeping nodes need a timer to regulate their sending interval
 Timer send_timer(2000);
 
-uint16_t nodes[256];
+uint16_t nodes[10];
 uint16_t nodesCount = 0;
 uint16_t robin = 0;
 
@@ -67,12 +67,13 @@ bool gotCommand = false;
 
 //byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };//CEREBRO
 byte mac[] = { 0x36, 0x4D, 0x8E, 0x3D, 0x57, 0x42 };//POPULOUS
-char hostname[] = "192.168.2.1"; //"10.118.82.4";
+char hostname[] = "192.168.2.1";//POPULOUS
+//char hostname[] = "professor-x.frogdesign.com";//CEREBRO
 int port = 3000;
 
 // websocket message handler: do something with command from server
 void ondata(SocketIOClient client, char *data) {
-  //   printf("Got command: %s\n",data);
+  // printf("Got command: %s\n",data);
 
   // printf("ON DATA\n");
   int len = strlen(data);
@@ -130,12 +131,13 @@ void setup(void)
   radio.begin();
   //Serial.println("network begin");
   network.begin(/*channel*/ 102, /*node address*/ this_node.address);
+  //network.begin(/*channel*/ 92, /*node address*/ this_node.address);
 
 
-  //Serial.println("Ethernet begin");
+  Serial.println("Ethernet begin");
   Ethernet.begin(mac);
 
-  //Serial.println("Set data delegate");
+  Serial.println("Set data delegate");
   client.setDataArrivedDelegate(ondata);
 //  Serial.println("Set disconnect delegate");
 //  client.setDataArrivedDelegate(ondisconnect);
